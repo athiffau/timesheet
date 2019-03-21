@@ -5,16 +5,7 @@
     <h1>Timesheet</h1>
     <p>Self-hosted web application for weekly reporting your consulting hours on projects using selected rates.</p>
 
-    <!-- <p>
-      Report an <a href src="https://github.com/valasek/timesheet/issues">
-        issue
-      </a> or request a <a href src="https://github.com/valasek/timesheet/issues">
-        new feature
-      </a>.
-    </p> -->
-
-    <h2>How to Start</h2>
-
+    <h2>Quick Start</h2>
     <p>
       <ol>
         <li>
@@ -30,41 +21,55 @@
           Use <router-link to="/administration">
             Backup & Restore
           </router-link>
-
           to export demo data. Update csv files and import back your projects, rates, consultants and holidays.
         </li>
         <li>
-          You are <router-link to="/">
+          Enjoy. You are <router-link to="/">
             good to go
           </router-link>
         </li>
       </ol>
     </p>
-    <h2>Commercial usage</h2>
+    <h2>Documentation</h2>
     <p>
-      Pay for the commertial usage of the application to support further development and maintenance via <a href="https://www.patreon.com/valasek">
-        Patreon
-      </a> or <a href="https://paypal.me/StanislavValasek">
-        PayPal
-      </a>.
+      Read <router-link to="/documentation">
+        full documentation.
+      </router-link>
+    </p>
+    <h2>Request New Feature</h2>
+    <p>
+      Do you like what you see but mising an important feature? <a href="mailto:valasek@gmail.com">Describe your need</a>
+      and next business day we will let you know if and when it will be available.
     </p>
     <v-img
       src="./settings-image.jpg"
       class="grey lighten-2 image"
     />
+    <br>
+    <p>2018 - {{ (new Date()).getFullYear() }} &copy; <strong><a href="https://valasek.wordpress.com/">Stanislav Valasek</a></strong> Version {{ version }}, server: {{ url }}:{{ port }}</p>
   </div>
 </template>
 
 <script>
+  import { mapState } from 'vuex'
+
   export default {
-    name: 'Help',
+
     data () {
       return {
+        url: process.env.VUE_APP_URL,
+        port: process.env.VUE_APP_PORT
       }
     },
 
+    computed: {
+      ...mapState({
+        version: state => state.settings.version
+      })
+    },
+
     created () {
-      this.$store.commit('context/SET_PAGE', 'Help')
+      this.$store.commit('context/SET_PAGE', 'About')
     }
   }
 </script>

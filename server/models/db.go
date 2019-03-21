@@ -3,11 +3,14 @@
 package models
 
 import (
+	"os"
 	"time"
 
+	"github.com/valasek/timesheet/server/logger"
+
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"    // needed because of gorm design
 	_ "github.com/jinzhu/gorm/dialects/postgres" // needed because of gorm design
-	// _ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 // DB abstraction
@@ -59,11 +62,13 @@ func NewPostgresDB(dataSourceName string) *DB {
 
 	db, err := gorm.Open("postgres", dataSourceName)
 	if err != nil {
-		panic(err)
+		logger.Log.Error("cannot open postgres connection, error: ", err)
+		os.Exit(1)
 	}
 
 	if err = db.DB().Ping(); err != nil {
-		panic(err)
+		logger.Log.Error("cannot ping postgres, error: ", err)
+		os.Exit(1)
 	}
 
 	// db.LogMode(true)
@@ -71,19 +76,22 @@ func NewPostgresDB(dataSourceName string) *DB {
 	return &DB{db}
 }
 
-// NewSqliteDB - sqlite database
-// func NewSqliteDB(dataSourceName string) *DB {
+// NewMySQLDB - mysql database
+func NewMySQLDB(dataSourceName string) *DB {
 
-// 	db, err := gorm.Open("sqlite3", dataSourceName)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	db, err := gorm.Open("mysql", dataSourceName)
+	if err != nil {
+		logger.Log.Error("cannot open mysql connection, error: ", err)
+		os.Exit(1)
+	}
 
-// 	if err = db.DB().Ping(); err != nil {
-// 		panic(err)
-// 	}
+	if err = db.DB().Ping(); err != nil {
+		// panic("ping", err)
+		logger.Log.Error("cannot ping mysql, error: ", err)
+		os.Exit(1)
+	}
 
-// 	// db.LogMode(true)
+	// db.LogMode(true)
 
-// 	return &DB{db}
-//   }
+	return &DB{db}
+}

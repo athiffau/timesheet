@@ -2,23 +2,25 @@
 
 import 'babel-polyfill'
 import Vue from 'vue'
-import App from './components/App.vue'
+import App from './App.vue'
 import store from './store'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 import VueRouter from 'vue-router'
 import './plugins/vuetify'
 
-import ReportTable from './components/ReportTable'
-import ReportedOverview from './components/ReportedOverview'
-import Holidays from './components/Holidays'
-import Administration from './components/Administration'
-import Help from './components/Help'
+import ReportTable from './views/ReportTable'
+import ReportedOverview from './views/ReportedOverview'
+import Holidays from './views/Holidays'
+import Administration from './views/Administration'
+import Help from './views/About'
+import Documentation from './views/Documentation'
 
 Vue.use(VueRouter)
 Vue.use(VueAxios, axios)
 
-Vue.config.productionTip = false
+// Vue.config.productionTip = false
+// Vue.config.performance = true
 
 let router = new VueRouter({
   mode: 'history',
@@ -44,9 +46,14 @@ let router = new VueRouter({
       component: Administration
     },
     {
-      path: '/help',
-      name: 'help',
+      path: '/about',
+      name: 'about',
       component: Help
+    },
+    {
+      path: '/documentation',
+      name: 'documentation',
+      component: Documentation
     },
     { path: '*', redirect: '/report' }
   ]

@@ -2,6 +2,9 @@
 
 <template>
   <div>
+    <v-toolbar dense>
+      <v-toolbar-title>Administration & Settings</v-toolbar-title>
+    </v-toolbar>
     <v-expansion-panel>
       <v-expansion-panel-content>
         <div slot="header">
@@ -10,19 +13,19 @@
         <v-card>
           <v-card-text>
             <div class="font-italic">
-              Used on Reported Overview page to show weekly and monthly expected working hours
+              Set minimum and maximum working hours  used on page Report my work to color code total daily work hours
             </div>
           </v-card-text>
           <v-container fluid>
             <v-layout align-start justify-start row fill-height>
               <v-flex xs5>
-                <v-text-field :value="dailyWorkingHoursMin" label="Minimum working hours"
+                <v-text-field :value="dailyWorkingHoursMin" label="Minimum working hours" :rules="hoursRules"
                               type="number" min="0" max="24" step="0.5" maxlength="2"
                               class="body-1" style="width: 15em" @input="onUpdateHours({hourType: 'dailyWorkingHoursMin', hourValue: $event})"
                 />
               </v-flex>
               <v-flex xs5>
-                <v-text-field :value="dailyWorkingHoursMax" label="Maximum working hours"
+                <v-text-field :value="dailyWorkingHoursMax" label="Maximum working hours" :rules="hoursRules"
                               type="number" min="0" max="24" step="0.5" maxlength="2"
                               class="body-1" style="width: 15em" @input="onUpdateHours({hourType: 'dailyWorkingHoursMax', hourValue: $event})"
                 />
@@ -56,20 +59,20 @@
             </v-layout>
             <v-layout align-start justify-start row fill-height>
               <v-flex xs4>
-                <v-text-field :value="yearlyVacationDays" label="Vacation days per year"
-                              type="number" min="0" max="24" step="0.5" maxlength="2"
+                <v-text-field :value="yearlyVacationDays" label="Vacation days per year" :rules="daysRules"
+                              type="number" min="0" max="40" step="1" maxlength="2"
                               class="body-1" style="width: 15em" @input="onUpdateDays({dayType: 'yearlyVacationDays', dayValue: $event})"
                 />
               </v-flex>
               <v-flex xs4>
-                <v-text-field :value="yearlyPersonalDays" label="Additional vacation days per year"
-                              type="number" min="0" max="24" step="0.5" maxlength="2"
+                <v-text-field :value="yearlyPersonalDays" label="Additional vacation days per year" :rules="daysRules"
+                              type="number" min="0" max="40" step="1" maxlength="2"
                               class="body-1" style="width: 15em" @input="onUpdateDays({dayType: 'yearlyPersonalDays', dayValue: $event})"
                 />
               </v-flex>
               <v-flex xs4>
-                <v-text-field :value="yearlySickDays" label="Additional vacation days per year"
-                              type="number" min="0" max="24" step="0.5" maxlength="2"
+                <v-text-field :value="yearlySickDays" label="Additional vacation days per year" :rules="daysRules"
+                              type="number" min="0" max="40" step="1" maxlength="2"
                               class="body-1" style="width: 15em" @input="onUpdateDays({dayType: 'yearlySickDays', dayValue: $event})"
                 />
               </v-flex>
@@ -106,16 +109,9 @@
             <p class="font-italic">
               Used for weekly and monthly expected working hours
             </p>
-            <v-text-field :value="dailyWorkingHours" label="Daily working hours"
+            <v-text-field :value="dailyWorkingHours" label="Daily working hours" :rules="hoursRules"
                           type="number" min="0" max="24" step="0.5" maxlength="2"
                           class="body-1" style="width: 10em" @input="onUpdateHours({hourType: 'dailyWorkingHours', hourValue: $event})"
-            />
-            <p class="font-italic">
-              When changed all dates will be save using this timezone. Allready saved dates will not be updated.
-            </p>
-            <v-autocomplete :value="timeZone" style="width: 15em" label="Timezone"
-                            :items="timeZones" :dense="true" :hide-selected="false" class="body-1"
-                            @change="onUpdateTimeZone"
             />
             <p class="font-italic">
               Used on Reported Overview page to show working and non-working time
@@ -136,15 +132,21 @@
           Backup & Restore
         </div>
         <v-card>
+          <v-card-text>
+            <div class="font-italic">
+              You can download all reported data in csv format as a zip file. Demo data can be modified, production moved to another instance or exported data used for billing.<br>
+              You can upload modified zipped csv files. Use the same format as downloaded archive. Import will delete and replace all existing data.
+            </div>
+          </v-card-text>
           <v-container fluid>
             <v-layout align-start justify-start row fill-height>
               <v-flex xs6>
                 <v-btn color="primary" @click="download">
                   Download&nbsp;&nbsp;<v-icon>cloud_download</v-icon>
                 </v-btn>
-                <p class="font-italic">
+                <!-- <p class="font-italic">
                   Download all data in csv format.
-                </p>
+                </p> -->
               </v-flex>
               <v-flex xs6>
                 <!-- eslint-disable-next-line vue/attribute-hyphenation -->
@@ -156,9 +158,9 @@
                     </v-icon>
                   </template>
                 </upload-btn>
-                <div class="font-italic">
+                <!-- <div class="font-italic">
                   Upload zipped csv files. Use the same format as downloaded.<br>Existing data will be replaced.
-                </div>
+                </div> -->
               </v-flex>
             </v-layout>
           </v-container>
@@ -189,9 +191,7 @@
 
 <script>
   import { mapState } from 'vuex'
-  import timeZones from './timeZones'
   import api from '../api/axiosSettings'
-  // import axios from 'axios'
   import UploadButton from 'vuetify-upload-button'
 
   export default {
@@ -202,6 +202,17 @@
 
     data () {
       return {
+        hoursRules: [
+          (v) => !isNaN(parseFloat(v)) || 'Enter hours between 0 and 24',
+          (v) => (parseFloat(v) <= 24) || 'Enter number between 0 and 24',
+          (v) => (parseFloat(v) >= 0) || 'Enter number between 0 and 24'
+        ],
+        daysRules: [
+          (v) => !isNaN(parseInt(v)) || 'Enter number of days between 0 and 40',
+          (v) => parseInt(v) === parseFloat(v) || 'Enter full days',
+          (v) => (parseInt(v) <= 40) || 'Enter number between 0 and 40',
+          (v) => (parseInt(v) >= 0) || 'Enter number between 0 and 40'
+        ],
         logLevels: [
           {
             id: 0,
@@ -213,14 +224,12 @@
           }
         ],
         logLines: ['select desired log level ...'],
-        timeZones: timeZones,
         uploadFile: {}
       }
     },
 
     computed: {
       ...mapState({
-        timeZone: state => state.settings.timeZone,
         dailyWorkingHours: state => state.settings.dailyWorkingHours,
         dailyWorkingHoursMin: state => state.settings.dailyWorkingHoursMin,
         dailyWorkingHoursMax: state => state.settings.dailyWorkingHoursMax,
@@ -284,33 +293,38 @@
       },
       getLogFile (logLevel) {
         const admin = this
-        api.apiClient.get('/api/download/logs/' + logLevel)
+        api.apiClient.get('/api/download/logs/' + logLevel.toString())
           .then(response => {
             admin.logLines = response.data.split(new RegExp('\r?\n', 'g')) /* eslint-disable-line no-control-regex */
           })
+          .catch(function (e) {
+            admin.$store.dispatch('context/setNotification', { text: 'Couldn\'t download log file: ' + e.response.data, type: 'error' }, { root: true })
+            console.log(e, e.response) /* eslint-disable-line no-console */
+          })
       },
       onUpdateHours (newValue) {
-        const value = {
-          hourType: newValue.hourType,
-          hourValue: parseFloat(newValue.hourValue)
+        if (!isNaN(parseFloat(newValue.hourValue)) && newValue.hourValue >= 0 && newValue.hourValue <= 24) {
+          const value = {
+            hourType: newValue.hourType,
+            hourValue: parseFloat(newValue.hourValue)
+          }
+          this.$store.dispatch('settings/setHours', value)
         }
-        this.$store.dispatch('settings/setHours', value)
       },
       onUpdateDays (newValue) {
-        const value = {
-          dayType: newValue.dayType,
-          dayValue: parseInt(newValue.dayValue)
+        if (parseInt(newValue.dayValue) === parseFloat(newValue.dayValue) && !isNaN(parseInt(newValue.dayValue)) && newValue.dayValue >= 0 && newValue.dayValue <= 40) {
+          const value = {
+            dayType: newValue.dayType,
+            dayValue: parseInt(newValue.dayValue)
+          }
+          this.$store.dispatch('settings/setDays', value)
         }
-        this.$store.dispatch('settings/setDays', value)
       },
       onUpdateRate (newValue) {
         this.$store.dispatch('settings/setRate', newValue)
       },
       onUpdateRateType (newValue) {
         this.$store.dispatch('settings/setRateType', newValue)
-      },
-      onUpdateTimeZone (newValue) {
-        this.$store.dispatch('settings/setTimeZone', newValue)
       }
     }
   }

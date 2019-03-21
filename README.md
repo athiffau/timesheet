@@ -2,7 +2,6 @@
 [![GitHub issues](https://img.shields.io/github/issues/valasek/timesheet.svg)](https://github.com/valasek/timesheet/issues)
 [![Go Report Card](https://goreportcard.com/badge/github.com/valasek/timesheet)](https://goreportcard.com/report/github.com/valasek/timesheet)
 
-
 | **Linux & Mac & Windows** |
 | :-----------------------: |
 | [![Build Status](https://travis-ci.org/valasek/timesheet.svg?branch=master)](https://travis-ci.org/valasek/timesheet) |
@@ -20,6 +19,10 @@ Simple Timesheet is project with its ongoing development made possible entirely 
 - [Become a backer or sponsor on Patreon](https://www.patreon.com/valasek)
 - [One-time donation via PayPal](https://paypal.me/StanislavValasek)
 
+# Documentation
+
+Read full [documentation](./server/documentation/documentation.md).
+
 # Rationale
 
 Reporting and billing process includes three separated steps with well-defined data which flows in between:
@@ -32,25 +35,6 @@ Reporting and billing process includes three separated steps with well-defined d
   * not covered by this app
   * data are available in the DB which can be exported by this app read or exported by any DB tool
 
-# Requirements
-
-- Linux, Windows or MacOS
-- PostgreSQL DB
-- Initialize the DB via `timesheet db --clean`
-- Import data from csv via `timesheet db --load all`
-  - mandatory: consultants, projects, rates, holidays
-  - optional: reported_records
-- start the server `timesheet server`
-
-Simple timesheet can be also deployed using Docker (server image size 24.9 MB, DB image size 312 MB)
-
-# How to start
-`docker-compose -f "docker-compose.yml" up -d --build`
-- Update Application settings , Vacation settings and Warning limits to meet your needs
-- Use Backup & Restore to export demo data. Update csv files and import back your projects, rates, consultants and holidays.
-- You are good to go 
-
-
 # Contributing
 
 I would love your help! Before submitting a PR, please read over the [Contributing](CONTRIBUTING.md) guide.
@@ -62,36 +46,18 @@ Here's a couple of areas that could use some love:
 * **Documentation** - Typo? Does something not make sense? Could it be worded better? Please help!
 * **Test Coverage** - Would love to get coverage over 80%, fontend and backend.
 
-
-# Pro Version
-
-My plan is to soon start working on a Pro Version of Timesheet for enterprise. Along with support, some of the planned features include:
-
-* User management/login
-* Permissions
-* HTTPS
-* Plugin for import/export 
-* Reporting metrics
-* Onsite and Online option
-
-If you or your organization would like to help beta test a Pro version of Timesheet, please get in touch with me:
-
-    Twitter: @valasek
-    Email: valasek at gmail.com
-
 # Standing on the shoulders of giants
 
-[Go](https://golang.org/), [Gorm](https://gorm.io/), [Vue](https://vuejs.org/), [axios](https://github.com/axios/axios), [Vuetify](https://vuetifyjs.com/en/), [PostgreSQL](https://www.postgresql.org/)
+[Go](https://golang.org/), [Gin web framework](https://github.com/gin-gonic), [Vue](https://vuejs.org/), [Vuetify](https://vuetifyjs.com/en/), [PostgreSQL](https://www.postgresql.org/) and [MySQL](https://www.mysql.com/)
 
-## Backend
+## Go Backend
 
-- Middleware: [Negroni](https://github.com/urfave/negroni)
-- Router: [Gorilla](https://github.com/gorilla/mux)
-- Orm: [Gorm](https://github.com/jinzhu/gorm) (with [PostgreSQL](https://www.postgresql.org/) persistence)
-- Jwt authentication: [jwt-go](https://github.com/dgrijalva/jwt-go) and [go-jwt-middleware](https://github.com/auth0/go-jwt-middleware)
-- User management
+- [Gin web framework](https://github.com/gin-gonic)
+- [Gorm](https://github.com/jinzhu/gorm) (with [PostgreSQL](https://www.postgresql.org/) or [MySQL](https://www.mysql.com/) persistence)
+- [Logrus](https://github.com/sirupsen/logrus), [Cobra](https://github.com/spf13/cobra), [Viper](https://github.com/spf13/viper), [Now](https://github.com/jinzhu/now), [lumberjackrus](https://github.com/orandin/lumberjackrus), [Cron](https://github.com/robfig/cron)
 
-## Frontend
+## JS Frontend
 
 - [Vue.js](https://vuejs.org/) spa client with webpack
 - [Vuetify](https://vuetifyjs.com/en/) - light theme
+- [Axios](https://github.com/axios/axios), [date-fns](https://date-fns.org/)

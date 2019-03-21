@@ -90,7 +90,7 @@ func (db *ReportedRecordManager) ReportedRecordsInMonth(year, month, consultant 
 			logger.Log.Error(fmt.Sprintf("failed - get reported records for month %s, year %s and consultant %s, error: %s", month, year, consultant, err))
 			return nil
 		}
-		if err := db.db.Where("date(date) in (?)", days).Find(&borderWeeksReportedRecords); err != nil {
+		if err := db.db.Where("date(date) in (?) AND consultant = ?", days, consultant).Find(&borderWeeksReportedRecords); err != nil {
 			reportedRecords = append(reportedRecords, borderWeeksReportedRecords...)
 			return reportedRecords
 		}
@@ -100,8 +100,6 @@ func (db *ReportedRecordManager) ReportedRecordsInMonth(year, month, consultant 
 }
 
 func getborderDays(year, month string) (days []string, err error) {
-	// days = append(days, "2018-12-31")
-
 	layout := "2006-1-02"
 	monthStart, err := time.Parse(layout, year+"-"+month+"-01")
 	if err != nil {
@@ -137,17 +135,20 @@ func getborderDays(year, month string) (days []string, err error) {
 		days = append(days, prevYear+"-"+prevMonth+"-"+fmt.Sprintf("%02d", day))
 	}
 
-	for day := 1; day <= sunday.Day(); day++ {
-		days = append(days, nextYear+"-"+nextMonth+"-"+fmt.Sprintf("%02d", day))
+	if sunday.Month() == monthStart.Month() {
+		// fmt.Println("sunday is also end of the month")
+	} else {
+		for day := 1; day <= sunday.Day(); day++ {
+			days = append(days, nextYear+"-"+nextMonth+"-"+fmt.Sprintf("%02d", day))
+		}
 	}
-
 	return days, nil
 }
 
 // ReportedRecordsSummary - return summary records per selected year
 func (db *ReportedRecordManager) ReportedRecordsSummary(year string) []ReportedRecordsSummary {
 	reportedRecordsSummary := []ReportedRecordsSummary{}
-	sql := fmt.Sprintf("select consultant, DATE_PART('month', date) as month, project, rate, sum(hours) as hours from reported_records where DATE_PART('year', date) = %s and deleted_at is null group by consultant, DATE_PART('month', date), project, rate", year)
+	sql := fmt.Sprintf("select consultant, extract(MONTH from date) as month, project, rate, sum(hours) as hours from reported_records where extract(YEAR from date) = %s and deleted_at is null group by consultant, extract(MONTH from date), project, rate", year)
 	if err := db.db.Raw(sql).Scan(&reportedRecordsSummary); err != nil {
 		// fmt.Println(reportedRecordsSummary)
 		return reportedRecordsSummary

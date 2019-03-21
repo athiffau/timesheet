@@ -5,12 +5,10 @@ package api
 import (
 	"archive/zip"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	// "mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,13 +20,12 @@ import (
 	"github.com/valasek/timesheet/server/models"
 	"github.com/valasek/timesheet/server/version"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
 // API -
 type API struct {
-	users           *models.UserManager
 	consultants     *models.ConsultantManager
 	reportedRecords *models.ReportedRecordManager
 	projects        *models.ProjectManager
@@ -39,7 +36,6 @@ type API struct {
 // AppSettings -
 type AppSettings struct {
 	Version              string  `json:"version"`
-	TimeZone             string  `json:"timeZone"`
 	DailyWorkingHours    float64 `json:"dailyWorkingHours"`
 	DailyWorkingHoursMin float64 `json:"dailyWorkingHoursMin"`
 	DailyWorkingHoursMax float64 `json:"dailyWorkingHoursMax"`
@@ -109,10 +105,9 @@ func tableFromFilename(file string) string {
 }
 
 // AppSettings returns list of all appliocation and user settings for configuration file
-func (api *API) AppSettings(w http.ResponseWriter, req *http.Request) {
+func (api *API) AppSettings(c *gin.Context) {
 	settings := AppSettings{
 		Version:              version.Version,
-		TimeZone:             viper.GetString("timeZone"),
 		DailyWorkingHours:    viper.GetFloat64("dailyWorkingHours"),
 		DailyWorkingHoursMin: viper.GetFloat64("dailyWorkingHoursMin"),
 		DailyWorkingHoursMax: viper.GetFloat64("dailyWorkingHoursMax"),
@@ -125,21 +120,21 @@ func (api *API) AppSettings(w http.ResponseWriter, req *http.Request) {
 		IsWorking:            viper.GetString("isWorking"),
 		IsNonWorking:         viper.GetString("isNonWorking"),
 	}
-	json.NewEncoder(w).Encode(settings)
+	c.JSON(http.StatusOK, settings)
 }
 
 // Download -
-func (api *API) Download(w http.ResponseWriter, req *http.Request) {
+func (api *API) Download(c *gin.Context) {
 	fileName, err := export()
 	if err != nil {
-		http.Error(w, "downloading data failed with error: "+err.Error(), 404)
+		c.String(http.StatusNotFound, "downloading data failed with error: "+err.Error())
 		return
 	}
 
 	file, err := os.Open(fileName)
 	defer file.Close()
 	if err != nil {
-		http.Error(w, "File not found.", 404)
+		c.String(http.StatusNotFound, "file not found")
 		return
 	}
 
@@ -152,45 +147,42 @@ func (api *API) Download(w http.ResponseWriter, req *http.Request) {
 	FileContentType := http.DetectContentType(FileHeader)
 
 	//Get the file size
-	FileStat, _ := file.Stat()                         //Get info from file
-	FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
+	FileStat, _ := file.Stat()  //Get info from file
+	FileSize := FileStat.Size() //Get file size
 
 	//Send the headers
-	w.Header().Set("Content-Disposition", "attachment; filename=go.mod")
-	w.Header().Set("Content-Type", FileContentType)
-	w.Header().Set("Content-Length", FileSize)
+	extraHeaders := map[string]string{
+		"Content-Disposition": `attachment; filename="timesheet-backup.zip"`,
+	}
 
 	//Send the file
 	//We read 512 bytes from the file already, so we reset the offset back to 0
 	file.Seek(0, 0)
-	io.Copy(w, file)
+	c.DataFromReader(http.StatusOK, FileSize, FileContentType, file, extraHeaders)
 	return
 }
 
 // Upload -
-func (api *API) Upload(w http.ResponseWriter, req *http.Request) {
-	const maxUploadSize = 5 * 1024 * 1024 // 5 mb
-	// validate file size
-	req.Body = http.MaxBytesReader(w, req.Body, maxUploadSize)
-	if err := req.ParseMultipartForm(maxUploadSize); err != nil {
-		logger.Log.Error("unable to upload file (size limit 5 MBs): ", err)
-		renderError(w, "unable to upload file (size limit 5 MBs): "+err.Error(), http.StatusBadRequest)
-		return
-	}
+func (api *API) Upload(c *gin.Context) {
 
 	// parse and validate file and post parameters
-	fileType := req.PostFormValue("type")
-	file, _, err := req.FormFile("uploadFile")
+	ffile, err := c.FormFile("uploadFile")
 	if err != nil {
 		logger.Log.Error("unable to upload file, INVALID_FILE: ", err)
-		renderError(w, "INVALID_FILE: "+err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "INVALID_FILE: "+err.Error())
+		return
+	}
+	file, err := ffile.Open()
+	if err != nil {
+		logger.Log.Error("unable open file, INVALID_FILE: ", err)
+		c.String(http.StatusBadRequest, "INVALID_FILE: "+err.Error())
 		return
 	}
 	defer file.Close()
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		logger.Log.Error("unable to upload file: INVALID_FILE: ", err)
-		renderError(w, "INVALID_FILE: "+err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "INVALID_FILE: "+err.Error())
 		return
 	}
 
@@ -198,52 +190,46 @@ func (api *API) Upload(w http.ResponseWriter, req *http.Request) {
 	filetype := http.DetectContentType(fileBytes)
 	if (filetype != "application/zip") && (filetype != "application/x-zip-compressed") {
 		logger.Log.Error("unable to upload file, INVALID_FILE_TYPE (supported: application/zip, application/x-zip-compressed): ", filetype)
-		renderError(w, "INVALID_FILE_TYPE: "+filetype, http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "INVALID_FILE_TYPE: "+filetype)
 		return
 	}
 	fileName := randToken(12) + ".zip"
-	// fileEndings, err := mime.ExtensionsByType(fileType)
-	// if err != nil {
-	// 	logger.Log.Error("unable to upload file, CANT_READ_FILE_TYPE: ", err)
-	// 	renderError(w, "CANT_READ_FILE_TYPE: " + err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
 	uploadPath := viper.GetString("uploadFolder")
-	// newPath := filepath.Join(uploadPath, fileName+fileEndings[0])
 	newPath := filepath.Join(uploadPath, fileName)
-	fmt.Printf("FileType: %s, File: %s\n", fileType, newPath)
+	// FIXME check file type
+	// fmt.Printf("FileType: %s, File: %s\n", fileType, newPath)
 
 	// write file
 	newFile, err := os.Create(newPath)
 	if err != nil {
 		logger.Log.Error("unable to upload file, CANT_WRITE_FILE: ", err)
-		renderError(w, "CANT_WRITE_FILE: "+err.Error(), http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "CANT_WRITE_FILE: "+err.Error())
 		return
 	}
 	defer newFile.Close() // idempotent, okay to call twice
 	if _, err := newFile.Write(fileBytes); err != nil || newFile.Close() != nil {
 		logger.Log.Error("unable to upload file. CANT_WRITE_FILE: ", err)
-		renderError(w, "CANT_WRITE_FILE: "+err.Error(), http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "CANT_WRITE_FILE: "+err.Error())
 		return
 	}
 	if err := restoreDB(newFile); err != nil {
 		logger.Log.Error("unable to restore: ", err)
-		renderError(w, "CANT_RESTORE: "+err.Error(), http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "CANT_RESTORE: "+err.Error())
 		return
 	}
 	err = os.RemoveAll(viper.GetString("uploadFolder"))
 	if err != nil {
 		logger.Log.Error("unable to restore: ", err)
-		renderError(w, "CANT_RESTORE: "+err.Error(), http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "CANT_RESTORE: "+err.Error())
 		return
 	}
 	err = os.Mkdir(viper.GetString("uploadFolder"), os.ModeDir)
 	if err != nil {
 		logger.Log.Error("unable to restore: ", err)
-		renderError(w, "CANT_RESTORE: "+err.Error(), http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "CANT_RESTORE: "+err.Error())
 		return
 	}
-	w.Write([]byte("SUCCESS"))
+	c.String(http.StatusOK, fmt.Sprintf("'%s' uploaded!", ffile.Filename))
 }
 
 func restoreDB(f *os.File) error {
@@ -339,18 +325,35 @@ func randToken(len int) string {
 	return fmt.Sprintf("%x", b)
 }
 
-func renderError(w http.ResponseWriter, message string, statusCode int) {
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(message))
+// DownloadDocs -
+func (api *API) DownloadDocs(c *gin.Context) {
+
+	fileName := filepath.Join("documentation", "documentation.md")
+	f, err := os.Open(fileName)
+	defer f.Close()
+	if err != nil {
+		c.String(http.StatusOK, fileName+" does not exist")
+		return
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		c.String(http.StatusOK, fileName+" cannot get file size")
+		return
+	}
+	if fi.Size() == 0 {
+		c.String(http.StatusOK, fileName+" does not exist")
+		return
+	}
+	c.File(fileName)
 }
 
 // DownloadLogs -
-func (api *API) DownloadLogs(w http.ResponseWriter, req *http.Request) {
+func (api *API) DownloadLogs(c *gin.Context) {
 
-	vars := mux.Vars(req)
-	logLevel := vars["logLevel"]
+	logLevel := c.Param("logLevel")
 	if len(logLevel) < 1 {
 		logger.Log.Error("unable to download log files, param 'logLevel' is missing")
+		c.String(http.StatusInternalServerError, "unable to download log files, param 'logLevel' is missing")
 		return
 	}
 
@@ -367,19 +370,24 @@ func (api *API) DownloadLogs(w http.ResponseWriter, req *http.Request) {
 	f, err := os.Open(fileName)
 	defer f.Close()
 	if err != nil {
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, file+" contains no log entries")
+		c.String(http.StatusOK, file+" contains no log entries")
 		return
 	}
-
-	http.ServeFile(w, req, fileName)
+	fi, err := f.Stat()
+	if err != nil {
+		c.String(http.StatusOK, file+" cannot get file size")
+		return
+	}
+	if fi.Size() == 0 {
+		c.String(http.StatusOK, file+" contains no log entries")
+		return
+	}
+	c.File(fileName)
 }
 
 // NewAPI -
 func NewAPI(db *models.DB) *API {
 
-	// usermgr, _ := models.NewUserManager(db)
 	consultantmgr, err := models.NewConsultantManager(db)
 	if err != nil {
 		logger.Log.Error(err)
@@ -607,9 +615,22 @@ func ConnectDB() (db *models.DB) {
 		db = models.NewPostgresDB(dbURL)
 		// fmt.Println("connected to DB:  ", connectionString)
 		logger.Log.Info("connected to DB ", dbURL)
-		// fmt.Println("")
+	case "mysql":
+		dbURL := viper.GetString("DATABASE_URL")
+
+		if len(dbURL) == 0 {
+			dbURL = viper.GetString("mysql.user") +
+				":" + viper.GetString("mysql.password") +
+				"@/" + viper.GetString("mysql.dbname") +
+				"?charset=utf8&parseTime=True&loc=Local"
+		}
+		// gorm.Open("mysql", "user:password@/dbname?charset=utf8&parseTime=True&loc=Local")
+		logger.Log.Info("connecting to DB ", dbURL)
+		db = models.NewMySQLDB(dbURL)
+		// fmt.Println("connected to DB:  ", connectionString)
+		logger.Log.Info("connected to DB ", dbURL)
 	default:
-		logger.Log.Error("not able to connect to DB, supported DB types (postgresql), set: ", DBType)
+		logger.Log.Error("not able to connect to DB, supported DB types (postgresql, mysql), set: ", DBType)
 		os.Exit(1)
 	}
 	return db
@@ -652,7 +673,7 @@ func appendFiles(filename string, zipw *zip.Writer) error {
 	}
 	defer file.Close()
 
-	wr, err := zipw.Create(filename)
+	wr, err := zipw.Create(filepath.Base(filename))
 	if err != nil {
 		msg := "failed to create entry for %s in zip file: %s"
 		return fmt.Errorf(msg, filename, err)

@@ -2,7 +2,7 @@
 
 <template>
   <div>
-    <v-toolbar flat>
+    <v-toolbar dense>
       <v-toolbar-title>State holidays</v-toolbar-title>
     </v-toolbar>
     <v-container grid-list-md text-xs-center>
@@ -31,7 +31,7 @@
 
 <script>
   import { mapState } from 'vuex'
-  import moment from 'moment'
+  import { parseISO, format } from 'date-fns'
 
   export default {
 
@@ -58,10 +58,11 @@
     methods: {
       formatDate (date) {
         if (!date) return null
-        return moment(date).format('MMM Do, YYYY')
+        return format(parseISO(date), 'MMM do, yyyy')
       },
       formatDay (date) {
-        return moment(date).format('dddd')
+        if (!date) return null
+        return format(parseISO(date), 'iiii')
       }
     }
   }

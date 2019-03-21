@@ -1,7 +1,7 @@
 <!-- Copyright © 2018-2019 Stanislav Valasek <valasek@gmail.com> -->
 
 <template>
-  <v-app>
+  <v-app :dark="goDark">
     <v-snackbar v-model="notification" :color="notificationType" :left="true" :timeout="5000">
       {{ notificationText }}
     </v-snackbar>
@@ -21,24 +21,28 @@
         <v-divider class="menuSettings" />
 
         <v-list-tile class="menuSettings">
-          <v-switch v-model="previousWeeksUnLock" :label="previousWeeksUnLockText" color="error" hide-details class="body-1" />
+          <v-switch v-model="weekUnlocked" :disabled="isCurrentWeek===true" label="Enable editing of this week" color="info" hide-details class="body-1" />
+        </v-list-tile>
+        <v-list-tile class="menuSettings">
+          <v-switch v-model="goDark" label="Enable dark mode" color="info" hide-details class="body-1" />
         </v-list-tile>
       </v-list>
     </v-navigation-drawer>
 
-    <v-toolbar color="blue darken-3" dark fixed clipped-left app>
+    <v-toolbar color="blue darken-3" dense dark fixed clipped-left app>
       <v-toolbar-side-icon @click.stop="drawer = !drawer" />
       <v-toolbar-title class="headline">
-        Timesheet /
+        <router-link to="/" class="my_title">
+          Timesheet
+        </router-link> /
       </v-toolbar-title>
       <v-toolbar-title>
         <span>{{ page }}</span>
-        <!-- <span class="font-weight-light">  management</span> -->
       </v-toolbar-title>
       <v-spacer />
-      <v-btn flat to="help">
+      <v-btn flat to="about">
         <span class="mr-2">
-          Help
+          About
         </span>
       </v-btn>
     </v-toolbar>
@@ -49,16 +53,16 @@
         </router-view>
       </v-container>
     </v-content>
-    <v-footer color="blue darken-0" dark fixed app>
+    <!-- <v-footer color="blue darken-0" dark fixed app>
       <v-flex text-xs-center>
         2018 - {{ (new Date()).getFullYear() }} &copy; <strong>Stanislav Valasek</strong> Version {{ version }}
       </v-flex>
-    </v-footer>
+    </v-footer> -->
   </v-app>
 </template>
 
 <script>
-  import ReportTable from './ReportTable'
+  import ReportTable from './views/ReportTable'
   import { mapState } from 'vuex'
 
   export default {
@@ -68,6 +72,7 @@
 
     data () {
       return {
+        goDark: false,
         drawer: true,
         items: [
           { title: 'Report my work', icon: 'work_outline', route: 'report' },
@@ -88,27 +93,20 @@
           this.$store.dispatch('context/resetNotification')
         }
       },
-      previousWeeksUnLock: {
+      weekUnlocked: {
         get () {
-          return this.$store.state.context.previousWeeksUnLock
+          return this.$store.state.context.weekUnlocked
         },
         set (newValue) {
-          this.$store.dispatch('context/TogglePreviousWeeksUnLock')
-        }
-      },
-      previousWeeksUnLockText () {
-        if (this.$store.state.context.previousWeeksUnLock) {
-          return 'Previous weeks unlocked'
-        } else {
-          return 'Previous weeks locked'
+          this.$store.dispatch('context/setWeekUnlocked', newValue)
         }
       },
       ...mapState({
         notificationText: state => state.context.notificationText,
         notificationType: state => state.context.notificationType,
+        isCurrentWeek: state => state.context.isCurrentWeek,
         selectedMonth: state => state.settings.selectedMonth,
-        page: state => state.context.page,
-        version: state => state.settings.version
+        page: state => state.context.page
       })
     },
 
@@ -133,4 +131,8 @@
   padding-bottom: 1px !important;
 }
 
+.my_title {
+  text-decoration: none !important;
+  color: white;
+}
 </style>

@@ -2,7 +2,7 @@ REM Copyright © 2018-2019 Stanislav Valasek <valasek@gmail.com>
 
 @ECHO OFF
 set zip="C:\Program Files\7-Zip\7z.exe"
-set version="1.0.1"
+set version="1.2.1"
 REM rem git describe --tags
 
 if "%1" == "demo" (
@@ -21,6 +21,9 @@ IF EXIST .\build\timesheet-prod.yaml del .\build\timesheet-prod.yaml
 IF EXIST .\build\MS_Windows_64bit.zip del .\build\MS_Windows_64bit.zip
 IF EXIST .\build\Linux_64bit.zip del .\build\Linux_64bit.zip
 IF EXIST .\build\Mac_OS_X_64bit.zip del .\build\Mac_OS_X_64bit.zip
+IF EXIST .\build\documentation\documentation.md del .\build\documentation\documentation.md
+IF EXIST .\build\logs\error.log del .\build\logs\error.log
+IF EXIST .\build\logs\info.log del .\build\logs\info.log
 IF EXIST .\build\client\dist\ @RD /S /Q .\build\client\dist
 del .\build\data\*.csv /F /Q
 
@@ -36,11 +39,11 @@ ECHO Compiling backend ...
 cd .\server
 if "%1" == "demo" (
     copy .\timesheet.yaml .\..\build\timesheet.yaml
-    copy .\data\consultants_demo.csv .\..\build\data\consultants.csv
+    copy .\data\consultants_demo.csv .\..\build\data\consultants_demo.csv
     copy .\data\holidays_us_2019.csv .\..\build\data\holidays_us_2019.csv
-    copy .\data\projects_demo.csv .\..\build\data\projects.csv
-    copy .\data\rates_demo.csv .\..\build\data\rates.csv
-    copy .\data\reported_records_demo.csv .\..\build\data\reported_records.csv
+    copy .\data\projects_demo.csv .\..\build\data\projects_demo.csv
+    copy .\data\rates_demo.csv .\..\build\data\rates_demo.csv
+    copy .\data\reported_records_demo.csv .\..\build\data\reported_records_demo.csv
 ) else (
     copy .\timesheet-prod.yaml .\..\build\timesheet.yaml
     copy .\data\consultants_prod.csv .\..\build\data\consultants_prod.csv
@@ -49,6 +52,8 @@ if "%1" == "demo" (
     copy .\data\rates_prod.csv .\..\build\data\rates_prod.csv
     copy .\data\reported_records_prod.csv .\..\build\data\reported_records_prod.csv
 )
+copy .\documentation\documentation.md .\..\build\documentation\documentation.md
+
 ECHO MS Windows ...
 set GOOS=windows
 set GOARCH=amd64
@@ -66,9 +71,9 @@ cd ..
 ECHO =========================
 ECHO Compressing artifacts ...
 cd .\build
-call %zip% a -r MS_Windows_64bit.zip timesheet.exe timesheet.yaml client/ data/ logs/
-call %zip% a -r Linux_64bit.zip ./timesheet.bin ./timesheet.yaml client/ data/ logs/
-call %zip% a -r Mac_OS_X_64bit.zip ./timesheet.app ./timesheet.yaml client/ data/ logs/
+call %zip% a -r MS_Windows_64bit.zip timesheet.exe timesheet.yaml client/ data/ logs/ documentation/
+call %zip% a -r Linux_64bit.zip ./timesheet.bin ./timesheet.yaml client/ data/ logs/ documentation/
+call %zip% a -r Mac_OS_X_64bit.zip ./timesheet.app ./timesheet.yaml client/ data/ logs/ documentation/
 cd ..
 
 ECHO ===========
